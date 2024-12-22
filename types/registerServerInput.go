@@ -8,9 +8,9 @@ type RegisterServerInput struct {
     CurrentMap      string      `json:"current_map" binding:"required"`
     GameStyle       string      `json:"game_style" binding:"required"`
     Info            *string     `json:"info" binding:"required"`
-    MaxPlayers      uint16     `json:"max_players" binding:"required"`
+    MaxPlayers      uint8       `json:"max_players" binding:"required"`
     Name            string      `json:"name" binding:"required"`
-    NumBots         *uint16     `json:"num_bots" binding:"required"`
+    NumBots         *uint8      `json:"num_bots" binding:"required"`
     OS              string      `json:"os" binding:"required"`
     Players         []string    `json:"players" binding:"required"`
     Port            uint16      `json:"port" binding:"required"`
