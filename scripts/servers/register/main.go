@@ -60,7 +60,7 @@ func createRegisterServerInput(port uint16, name string) types.RegisterServerInp
     bonusFrequency := new(uint16)
     country := new(string)
     info := new(string)
-    numBots := new(uint16)
+    numBots := new(uint8)
     private := new(bool)
     realistic := new(bool)
     respawn := new(uint32)
