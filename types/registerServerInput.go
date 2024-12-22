@@ -80,6 +80,10 @@ func ValidateRegisterServerInput(registerServerInput RegisterServerInput) bool {
         return false
     }
 
+    if len(registerServerInput.Players) > int(registerServerInput.MaxPlayers) {
+        return false
+    }
+
     for _, playerName := range registerServerInput.Players {
         if len(playerName) > MaxPlayerNameSize {
             return false
