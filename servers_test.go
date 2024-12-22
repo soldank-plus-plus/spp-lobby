@@ -101,7 +101,7 @@ func TestFieldsWithDefaultValuesOnRegisteringNewServer(t *testing.T) {
 	bonusFrequency := new(uint16)
 	country := new(string)
 	info := new(string)
-	numBots := new(uint16)
+	numBots := new(uint8)
 	private := new(bool)
 	realistic := new(bool)
 	respawn := new(uint32)
@@ -153,7 +153,7 @@ func TestMissingFieldsOnRegisteringNewServer(t *testing.T) {
 	antiCheatOn := new(bool)
 	bonusFrequency := new(uint16)
 	info := new(string)
-	numBots := new(uint16)
+	numBots := new(uint8)
 	realistic := new(bool)
 	respawn := new(uint32)
 	survival := new(bool)
@@ -259,6 +259,16 @@ func TestTooLongOSOnRegisteringNewServer(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, returnedCode)
 }
 
+func TestMorePlayersThanMaxPlayersOnRegisteringNewServer(t *testing.T) {
+	router := setupRouter()
+	registerServerInput := createRegisterServerInput(23073, "Test Name")
+	registerServerInput.MaxPlayers = 2
+	registerServerInput.Players = []string{"1", "2", "3"}
+	invalidInputJson, _ := json.Marshal(registerServerInput)
+	returnedCode, _ := sendJsonToPostEndpoint(router, "/servers", invalidInputJson)
+	assert.Equal(t, http.StatusBadRequest, returnedCode)
+}
+
 func TestTooLongPlayerNameOnRegisteringNewServer(t *testing.T) {
 	router := setupRouter()
 	registerServerInput := createRegisterServerInput(23073, "Test Name")
@@ -312,7 +322,7 @@ func createRegisterServerInput(port uint16, name string) types.RegisterServerInp
 	bonusFrequency := new(uint16)
 	country := new(string)
 	info := new(string)
-	numBots := new(uint16)
+	numBots := new(uint8)
 	private := new(bool)
 	realistic := new(bool)
 	respawn := new(uint32)
