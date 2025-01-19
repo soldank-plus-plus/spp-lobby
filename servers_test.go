@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/nedik/spp-lobby/controllers"
+	"github.com/nedik/spp-lobby/initializers"
 	"github.com/nedik/spp-lobby/routes"
 	"github.com/nedik/spp-lobby/types"
 
@@ -29,6 +30,7 @@ func setupRouter() TestEnvironment {
 	var testEnvironment TestEnvironment
 	testEnvironment.HTTPRecorder = httptest.NewRecorder()
 	testEnvironment.Context, testEnvironment.Router = gin.CreateTestContext(testEnvironment.HTTPRecorder)
+	initializers.SetupServer(testEnvironment.Router)
 
 	serverController := controllers.NewServerController()
 	serverRouteController := routes.NewServerRouteController(serverController)
@@ -90,6 +92,46 @@ func TestRegisterServerAndThenUpdateIt(t *testing.T) {
 	advanced := !*registerServerInput.Advanced
 	registerServerInput.Advanced = &advanced
 	registeredServer = registerServerInputAndAssert(t, testEnvironment, registerServerInput)
+	getServersAndAssert(t, testEnvironment, []types.Server{registeredServer})
+}
+
+func TestRegisterNewServerCheckIP(t *testing.T) {
+	testEnvironment := setupRouter()
+
+	registerServerInput := createRegisterServerInput(23073, "Test Server")
+	serverJson, _ := json.Marshal(registerServerInput)
+
+	testEnvironment.Context.Request, _ = http.NewRequest("POST", "/servers", strings.NewReader(string(serverJson)))
+	testEnvironment.Context.Request.RemoteAddr = "1.2.3.4:12345"
+	httpRecorder := httptest.NewRecorder()
+	testEnvironment.Router.ServeHTTP(httpRecorder, testEnvironment.Context.Request)
+	returnedCode := httpRecorder.Code
+
+	assert.Equal(t, http.StatusCreated, returnedCode)
+
+	registeredServer := types.ConvertRegisterServerInputToServer(registerServerInput)
+	registeredServer.IP = "1.2.3.4"
+
+	getServersAndAssert(t, testEnvironment, []types.Server{registeredServer})
+}
+
+func TestRegisterServerThroughProxy(t *testing.T) {
+	testEnvironment := setupRouter()
+
+	registerServerInput := createRegisterServerInput(23073, "Test Server")
+	serverJson, _ := json.Marshal(registerServerInput)
+
+	testEnvironment.Context.Request, _ = http.NewRequest("POST", "/servers", strings.NewReader(string(serverJson)))
+	testEnvironment.Context.Request.RemoteAddr = "1.2.3.4:12345"
+	testEnvironment.Context.Request.Header.Set("X-Forwarded-For", "255.255.255.255")
+	httpRecorder := httptest.NewRecorder()
+	testEnvironment.Router.ServeHTTP(httpRecorder, testEnvironment.Context.Request)
+	returnedCode := httpRecorder.Code
+
+	assert.Equal(t, http.StatusCreated, returnedCode)
+
+	registeredServer := types.ConvertRegisterServerInputToServer(registerServerInput)
+	registeredServer.IP = "1.2.3.4"
 	getServersAndAssert(t, testEnvironment, []types.Server{registeredServer})
 }
 

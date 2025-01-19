@@ -33,6 +33,7 @@ func main() {
 	}
 
 	server := gin.Default()
+	initializers.SetupServer(server)
 	router := server.Group("/")
 
 	ServerRouteController.InitServerRoutes(router)
