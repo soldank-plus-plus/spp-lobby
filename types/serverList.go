@@ -9,9 +9,9 @@ type Server struct {
     GameStyle       string      `json:"game_style"`
     IP              string      `json:"ip"`
     Info            string      `json:"info"`
-    MaxPlayers      uint16      `json:"max_players"`
+    MaxPlayers      uint8       `json:"max_players"`
     Name            string      `json:"name"`
-    NumBots         uint16      `json:"num_bots"`
+    NumBots         uint8       `json:"num_bots"`
     OS              string      `json:"os"`
     Players         []string    `json:"players"`
     Port            uint16      `json:"port"`
