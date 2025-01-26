@@ -9,29 +9,32 @@ import (
 	"github.com/nedik/spp-lobby/types"
 
 	"github.com/gin-gonic/gin"
-	"github.com/igrmk/treemap/v2"
 )
 
-type TServersByUpdatedTime = *treemap.TreeMap[int64, []types.Server]
-type TServersByIPPort = map[string]types.Server
+type TServersByUpdatedTime = *types.SafeTreeMap[int64, []types.Server]
+type TServersByIPPort = *types.SafeMap[string, types.Server]
 
 const SERVER_EXPIRY_TIME_IN_SECONDS = 5 * 60 // 5 minutes
 
 type ServerController struct {
     serversByUpdatedTime TServersByUpdatedTime
-    serversByIPPort TServersByIPPort
+    serversByIPPort      TServersByIPPort
 }
 
 func NewServerController() ServerController {
     return ServerController{
-        serversByUpdatedTime: treemap.New[int64,  []types.Server](),
-        serversByIPPort: make(map[string]types.Server),
+        serversByUpdatedTime: types.NewSafeTreeMap[int64, []types.Server](),
+        serversByIPPort:      types.NewSafeMap[string, types.Server](),
     }
 }
 
 func treeToList(serversTree TServersByUpdatedTime) []types.Server {
     serversList := []types.Server{}
-    for it := serversTree.Iterator(); it.Valid(); it.Next() {
+
+    serversTree.Mutex.Lock()
+    defer serversTree.Mutex.Unlock()
+
+    for it := serversTree.UnsafeTreeMap.Iterator(); it.Valid(); it.Next() {
         for _, currentServer := range it.Value() {
             serversList = append(serversList, currentServer)
         }
@@ -65,10 +68,10 @@ func (self *ServerController) RegisterServer(c *gin.Context) {
     incomingServer.UpdatedAt = time.Now().Unix()
 
     // Find and update duplicate if exists
-    foundServer, serverFound := self.serversByIPPort[incomingServerIPPort]
+    foundServer, serverFound := self.serversByIPPort.Get(incomingServerIPPort)
     if serverFound {
         self.updateInServersTree(foundServer, incomingServer)
-        self.serversByIPPort[incomingServerIPPort] = incomingServer
+        self.serversByIPPort.Set(incomingServerIPPort, incomingServer)
 
         c.JSON(http.StatusCreated, gin.H{})
         return
@@ -76,7 +79,7 @@ func (self *ServerController) RegisterServer(c *gin.Context) {
 
     // If doesn't exist, then add a new one
     appendToServersTree(self.serversByUpdatedTime, incomingServer)
-    self.serversByIPPort[incomingServerIPPort] = incomingServer
+    self.serversByIPPort.Set(incomingServerIPPort, incomingServer)
     c.JSON(http.StatusCreated, gin.H{})
 }
 
@@ -128,7 +131,7 @@ func getPortFromParams(c *gin.Context) (uint16, error) {
 
 func (self *ServerController) findServer(ip string, port uint16) (*types.Server, error) {
     serverIPPort := convertToIPPort(ip, port)
-    candidateServer, serverFound := self.serversByIPPort[serverIPPort]
+    candidateServer, serverFound := self.serversByIPPort.Get(serverIPPort)
     if serverFound {
         return &candidateServer, nil
     }
@@ -186,18 +189,21 @@ func (self *ServerController) updateInServersTree(existingServer types.Server, u
 func removeExpiredServers(serversTree TServersByUpdatedTime, serversMap TServersByIPPort) {
     timeNow := time.Now().Unix()
     serversTreeKeysToDelete := []int64{}
-    for it := serversTree.Iterator(); it.Valid(); it.Next() {
+
+    serversTree.Mutex.Lock()
+    defer serversTree.Mutex.Unlock()
+
+    for it := serversTree.UnsafeTreeMap.Iterator(); it.Valid(); it.Next() {
         if timeNow - it.Key() > SERVER_EXPIRY_TIME_IN_SECONDS {
             for _, currentServer := range it.Value() {
                 serverIPPort := convertToIPPort(currentServer.IP, currentServer.Port)
-                delete(serversMap, serverIPPort)
+                serversMap.Delete(serverIPPort)
             }
             serversTreeKeysToDelete = append(serversTreeKeysToDelete, it.Key())
         }
     }
 
     for _, serversTreeKeyToDelete := range serversTreeKeysToDelete {
-        serversTree.Del(serversTreeKeyToDelete)
+        serversTree.UnsafeTreeMap.Del(serversTreeKeyToDelete)
     }
 }
-
