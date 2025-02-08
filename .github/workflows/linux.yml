@@ -1,0 +1,36 @@
+name: Linux test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        go-version: [ '1.22.x', '1.23.x' ]
+        go-deployment-type: [ 'debug', 'release' ]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Display Go version
+        run: go version
+
+      - name: Build project
+        run: go build .
+
+      - name: Run tests in ${{ matrix.go-deployment-type }} mode
+        run: GIN_MODE=${{ matrix.go-deployment-type }} go test
+
